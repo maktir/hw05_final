@@ -65,9 +65,12 @@ class PostURLTests(TestCase):
         """
         urls_redirections = {
             '/new/': '/auth/login/?next=/new/',
-            '/testusername/1/edit/': '/auth/login/?next=/testusername/1/edit/', # noqa
-            '/anotheruser/follow/': '/auth/login/?next=/anotheruser/follow/', # noqa
-            '/anotheruser/unfollow/': '/auth/login/?next=/anotheruser/unfollow/', # noqa
+            '/testusername/1/edit/': ('/auth/login/?next='
+                                      '/testusername/1/edit/'),
+            '/anotheruser/follow/': ('/auth/login/?next='
+                                     '/anotheruser/follow/'),
+            '/anotheruser/unfollow/': ('/auth/login/?next='
+                                       '/anotheruser/unfollow/'),
         }
         for url, redirection in urls_redirections.items():
             with self.subTest(url=url):
