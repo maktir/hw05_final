@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.urls import reverse
 from http import HTTPStatus
-from posts.models import Post, Group
+from posts.models import Post, Group, Follow
 
 User = get_user_model()
 
@@ -97,17 +97,36 @@ class PostURLTests(TestCase):
 
     def test_follow_pages(self):
         """
-        Зарегистрированный пользователь перенаправляется на страницу подписок
+        Зарегистрированный пользователь после подписки перенаправляется
+        на страницу подписок.
         """
-        urls_redirections = {
-            '/anotheruser/follow/': reverse('follow_index'),
-            '/anotheruser/unfollow/': reverse('follow_index'),
-        }
-        for url, redirection in urls_redirections.items():
-            with self.subTest(url=url):
-                response = self.authorized_client.get(url, follow=True)
-                self.assertRedirects(
-                    response, redirection)
+        response = self.authorized_client.get(reverse('profile_follow',
+                                                      kwargs={
+                                                          'username': (
+                                                              'anotheruser'
+                                                          )
+                                                      }
+                                                      )
+                                              )
+        self.assertRedirects(response, reverse('follow_index'))
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
+
+    def test_unfollow_pages(self):
+        """
+        Зарегистрированный пользователь после отписки перенаправляется
+        на страницу подписок.
+        """
+        Follow.objects.create(user=self.user, author=self.another_user)
+        response = self.authorized_client.get(reverse('profile_unfollow',
+                                                      kwargs={
+                                                          'username': (
+                                                              'anotheruser'
+                                                          )
+                                                      }
+                                                      )
+                                              )
+        self.assertRedirects(response, reverse('follow_index'))
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
 
     def test_urls_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""

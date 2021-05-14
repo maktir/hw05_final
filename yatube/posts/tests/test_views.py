@@ -8,7 +8,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django import forms
 
-from posts.models import Post, Group, Follow
+from posts.models import Post, Group, Follow, Comment
 
 User = get_user_model()
 
@@ -68,6 +68,7 @@ class PostViewTests(TestCase):
         super().tearDownClass()
 
     def setUp(self):
+        self.guest_client = Client()
         self.authorized_client = Client()
         self.another_authorized = Client()
         self.third_authorized = Client()
@@ -155,14 +156,57 @@ class PostViewTests(TestCase):
         """Шаблон follow сформирован с правильным контекстом."""
         follow_response = self.another_authorized.get(reverse('follow_index'))
         unfollow_response = self.third_authorized.get(reverse('follow_index'))
-        expect_post = follow_response.context['page'][0]
-        self.assertEqual(expect_post, self.post)
+        self.assertIn(self.post, follow_response.context['page'])
         self.assertNotIn(self.post, unfollow_response.context['page'])
+
+    def test_authorized_user_can_follow_and_unfollow(self):
+        """
+        Авторизованный пользователь может подписаться и отписаться от автора.
+        """
+        followers_count = Follow.objects.count()
         self.third_authorized.get(reverse('profile_follow',
                                           kwargs={'username': 'TestUser'}))
         self.assertTrue(Follow.objects.filter(user=self.third_user,
                                               author=self.author).exists())
+        self.assertEqual(Follow.objects.count(), followers_count + 1)
         self.third_authorized.get(reverse('profile_unfollow',
                                           kwargs={'username': 'TestUser'}))
         self.assertFalse(Follow.objects.filter(user=self.third_user,
                                                author=self.author).exists())
+        self.assertEqual(Follow.objects.count(), followers_count)
+
+    def test_unauthorized_cant_comment(self):
+        """
+        Неавторизованный пользователь не может комментировать запись.
+        Авторизованный может.
+        """
+        comment_count = Comment.objects.count()
+        form_data = {'text': 'TestText'}
+        guest_response = self.guest_client.post(reverse('add_comment',
+                                                        kwargs={
+                                                            'username': (
+                                                                'TestUser'
+                                                            ),
+                                                            'post_id': 1
+                                                        }
+                                                        ),
+                                                data=form_data,
+                                                follow=True)
+        self.assertEqual(comment_count, Comment.objects.count())
+        self.assertFalse(Comment.objects.filter(text='TestText').exists())
+        self.assertRedirects(guest_response, ('/auth/login/?next='
+                                              '/TestUser/1/comment')
+                             )
+        auth_response = self.another_authorized.post(reverse('add_comment',
+                                                             kwargs={
+                                                                 'username': (
+                                                                     'TestUser'
+                                                                 ),
+                                                                 'post_id': 1
+                                                             }
+                                                             ),
+                                                     data=form_data,
+                                                     follow=True)
+        self.assertEqual(comment_count + 1, Comment.objects.count())
+        self.assertTrue(Comment.objects.filter(text='TestText').exists())
+        self.assertRedirects(auth_response, '/TestUser/1/')

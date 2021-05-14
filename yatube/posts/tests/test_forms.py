@@ -9,7 +9,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from http import HTTPStatus
 
-from posts.models import Post, Group, Comment
+from posts.models import Post, Group
 
 User = get_user_model()
 
@@ -137,18 +137,3 @@ class PostFormTests(TestCase):
             group=self.group).exists())
         self.assertRedirects(response, '/JohnDoe/1/')
         self.assertEqual(response.status_code, HTTPStatus.FOUND)
-
-    def test_unauthorized_cant_comment(self):
-        comment_count = Comment.objects.count()
-        form_data = {'text': 'TestText'}
-        response = self.guest_client.post(reverse('add_comment',
-                                                  kwargs={
-                                                      'username': 'JohnDoe',
-                                                      'post_id': 1
-                                                  }
-                                                  ),
-                                          data=form_data,
-                                          follow=True)
-        self.assertEqual(comment_count, Comment.objects.count())
-        self.assertFalse(Comment.objects.filter(text='TestText').exists())
-        self.assertRedirects(response, '/auth/login/?next=/JohnDoe/1/comment')
