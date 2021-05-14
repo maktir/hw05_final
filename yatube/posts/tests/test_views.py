@@ -159,9 +159,9 @@ class PostViewTests(TestCase):
         self.assertIn(self.post, follow_response.context['page'])
         self.assertNotIn(self.post, unfollow_response.context['page'])
 
-    def test_authorized_user_can_follow_and_unfollow(self):
+    def test_authorized_user_can_follow(self):
         """
-        Авторизованный пользователь может подписаться и отписаться от автора.
+        Авторизованный пользователь может подписаться на автора.
         """
         followers_count = Follow.objects.count()
         self.third_authorized.get(reverse('profile_follow',
@@ -169,16 +169,23 @@ class PostViewTests(TestCase):
         self.assertTrue(Follow.objects.filter(user=self.third_user,
                                               author=self.author).exists())
         self.assertEqual(Follow.objects.count(), followers_count + 1)
+
+    def test_authorized_user_can_unfollow(self):
+        """
+        Авторизовавнный пользователь может отписаться от автора
+        """
+        Follow.objects.create(user=self.third_user,
+                              author=self.author)
+        followers_count = Follow.objects.count()
         self.third_authorized.get(reverse('profile_unfollow',
                                           kwargs={'username': 'TestUser'}))
         self.assertFalse(Follow.objects.filter(user=self.third_user,
                                                author=self.author).exists())
-        self.assertEqual(Follow.objects.count(), followers_count)
+        self.assertEqual(Follow.objects.count(), followers_count - 1)
 
     def test_unauthorized_cant_comment(self):
         """
         Неавторизованный пользователь не может комментировать запись.
-        Авторизованный может.
         """
         comment_count = Comment.objects.count()
         form_data = {'text': 'TestText'}
@@ -197,6 +204,13 @@ class PostViewTests(TestCase):
         self.assertRedirects(guest_response, ('/auth/login/?next='
                                               '/TestUser/1/comment')
                              )
+
+    def test_authorized_user_can_comment(self):
+        """
+        Авторизованный пользователь может комментировать запись.
+        """
+        comment_count = Comment.objects.count()
+        form_data = {'text': 'TestText'}
         auth_response = self.another_authorized.post(reverse('add_comment',
                                                              kwargs={
                                                                  'username': (

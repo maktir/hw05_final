@@ -89,6 +89,10 @@ class PostURLTests(TestCase):
         """Страница /edit/ недоступна не автору записи."""
         response = self.another_authorized.get('/testusername/1/edit/')
         self.assertNotEqual(response.status_code, HTTPStatus.OK)
+        self.assertRedirects(response, reverse('post', kwargs={
+            'username': 'testusername',
+            'post_id': 1
+        }))
 
     def test_open_access_to_edit_by_author(self):
         """Страница /edit/ доступна автору записи."""
@@ -134,3 +138,7 @@ class PostURLTests(TestCase):
             with self.subTest(adress=adress):
                 response = self.authorized_client.get(adress)
                 self.assertTemplateUsed(response, template)
+
+    def test_not_found(self):
+        response = self.guest_client.get('/wrong_url/')
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
