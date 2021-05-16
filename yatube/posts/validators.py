@@ -2,7 +2,6 @@ from django import forms
 
 
 def validate_not_empty(value):
-    # проверка "а заполнено ли поле?"
     if value == '':
         raise forms.ValidationError(
             'Поле обязательно для заполнения',
